@@ -1,26 +1,40 @@
 'use client';
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import {
   calculateAgeBreakdown,
   calculateNextBirthdayCountdown,
   DEFAULT_TIMEZONE,
-  getZonedDate,
   AgeBreakdown,
   CountdownBreakdown,
 } from '@/lib/ageCalculator';
-import { Clock, Calendar, Sparkles } from 'lucide-react';
+import { Clock, Calendar, Sparkles, Heart } from 'lucide-react';
+import confetti from 'canvas-confetti';
 
 export const AgeCountdownSection: React.FC = () => {
   const [ageData, setAgeData] = useState<AgeBreakdown | null>(null);
   const [countdownData, setCountdownData] = useState<CountdownBreakdown | null>(null);
+  const confettiFiredRef = useRef(false);
 
   useEffect(() => {
-    // Immediate calculation
+    // Immediate calculation using accurate Asia/Karachi time
     const update = () => {
-      const nowZoned = getZonedDate();
-      setAgeData(calculateAgeBreakdown(nowZoned));
-      setCountdownData(calculateNextBirthdayCountdown(nowZoned));
+      const now = new Date();
+      const age = calculateAgeBreakdown(now);
+      const countdown = calculateNextBirthdayCountdown(now);
+      setAgeData(age);
+      setCountdownData(countdown);
+
+      // Trigger subtle celebration confetti once when birthday begins/is active
+      if (countdown.isToday && !confettiFiredRef.current) {
+        confettiFiredRef.current = true;
+        confetti({
+          particleCount: 80,
+          spread: 70,
+          origin: { y: 0.55 },
+          colors: ['#d4af37', '#b80a32', '#f8c8d2', '#ffffff'],
+        });
+      }
     };
 
     update();
@@ -35,6 +49,13 @@ export const AgeCountdownSection: React.FC = () => {
       </div>
     );
   }
+
+  // Determine section heading
+  const sectionHeading = countdownData.isToday
+    ? `Happy ${ageData.years}th Birthday, Talal! ❤️`
+    : countdownData.status === 'next_birthday'
+    ? `${ageData.years} Years of Being You — A Lifetime of Beautiful Moments`
+    : `27 Years of Being You — A Lifetime of Beautiful Moments`;
 
   return (
     <div
@@ -75,7 +96,7 @@ export const AgeCountdownSection: React.FC = () => {
             lineHeight: 1.2,
           }}
         >
-          27 Years of Being You — A Lifetime of Beautiful Moments
+          {sectionHeading}
         </h2>
         <p
           className="font-serif-elegant"
@@ -92,7 +113,7 @@ export const AgeCountdownSection: React.FC = () => {
         </p>
       </div>
 
-      {/* Part A: Upcoming Birthday Countdown Banner */}
+      {/* Part A: Upcoming Birthday Countdown / Celebratory Message Banner */}
       <div
         className="glass-panel-glow"
         style={{
@@ -109,7 +130,7 @@ export const AgeCountdownSection: React.FC = () => {
             justifyContent: 'center',
             gap: '0.5rem',
             color: 'var(--champagne-gold)',
-            marginBottom: '1rem',
+            marginBottom: '1.2rem',
             fontSize: '0.95rem',
             fontWeight: 600,
             textTransform: 'uppercase',
@@ -118,71 +139,122 @@ export const AgeCountdownSection: React.FC = () => {
         >
           <Sparkles size={18} />
           {countdownData.isToday
-            ? '🎉 TODAY IS THE SPECIAL DAY — HAPPY 27TH BIRTHDAY! 🎉'
+            ? '🎉 TODAY IS YOUR SPECIAL DAY! 🎉'
+            : countdownData.status === 'next_birthday'
+            ? `Next Birthday In ❤️ (17 October ${countdownData.targetBirthdayYear})`
             : `Countdown to 27th Birthday (17 October ${countdownData.targetBirthdayYear})`}
         </div>
 
+        {/* When Birthday is Active (17 October 00:00:00 to 23:59:59 PKT): Celebratory Message */}
         {countdownData.isToday ? (
           <div style={{ padding: '1rem 0' }}>
             <h3
               className="crimson-gradient-text"
-              style={{ fontSize: '2.4rem', marginBottom: '0.5rem' }}
+              style={{
+                fontSize: 'clamp(2rem, 4.5vw, 3rem)',
+                marginBottom: '1rem',
+                lineHeight: 1.2,
+              }}
             >
-              Happy Birthday, Talal Ahmad!
+              🎂 HAPPY BIRTHDAY, TALAL! ❤️
             </h3>
-            <p style={{ color: 'var(--champagne-light)', fontSize: '1.1rem' }}>
-              Today our whole universe celebrates you! ❤️
+
+            <p
+              className="font-serif-elegant"
+              style={{
+                color: 'var(--warm-ivory)',
+                fontSize: 'clamp(1.2rem, 2.5vw, 1.55rem)',
+                lineHeight: 1.6,
+                fontStyle: 'italic',
+                maxWidth: '680px',
+                margin: '0 auto 1.2rem auto',
+              }}
+            >
+              &ldquo;Today is your special day! May your universe always be filled with happiness, love, and beautiful memories.&rdquo;
             </p>
+
+            <div
+              style={{
+                display: 'inline-flex',
+                alignItems: 'center',
+                gap: '0.5rem',
+                padding: '0.5rem 1.4rem',
+                background: 'rgba(212, 175, 55, 0.15)',
+                border: '1px solid rgba(212, 175, 55, 0.4)',
+                borderRadius: '9999px',
+                color: 'var(--champagne-light)',
+                fontSize: '0.95rem',
+              }}
+            >
+              <Heart size={16} fill="var(--champagne-gold)" />
+              <span>Meri Jan, aap ki khushi meri sab se badi khushi ha! ❤️</span>
+            </div>
           </div>
         ) : (
-          <div
-            style={{
-              display: 'grid',
-              gridTemplateColumns: 'repeat(4, 1fr)',
-              gap: '1rem',
-              maxWidth: '540px',
-              margin: '0 auto',
-            }}
-          >
-            {[
-              { label: 'Days', val: countdownData.days },
-              { label: 'Hours', val: countdownData.hours },
-              { label: 'Minutes', val: countdownData.minutes },
-              { label: 'Seconds', val: countdownData.seconds },
-            ].map((item, idx) => (
-              <div
-                key={idx}
+          /* Pre-Birthday or Next-Birthday Live Countdown Grid */
+          <div>
+            <div
+              style={{
+                display: 'grid',
+                gridTemplateColumns: 'repeat(4, 1fr)',
+                gap: '1rem',
+                maxWidth: '540px',
+                margin: '0 auto',
+              }}
+            >
+              {[
+                { label: 'Days', val: countdownData.days },
+                { label: 'Hours', val: countdownData.hours },
+                { label: 'Minutes', val: countdownData.minutes },
+                { label: 'Seconds', val: countdownData.seconds },
+              ].map((item, idx) => (
+                <div
+                  key={idx}
+                  style={{
+                    background: 'rgba(255, 255, 255, 0.04)',
+                    border: '1px solid rgba(212, 175, 55, 0.25)',
+                    borderRadius: '1rem',
+                    padding: '1rem 0.5rem',
+                  }}
+                >
+                  <div
+                    style={{
+                      fontFamily: 'var(--font-serif-title)',
+                      fontSize: 'clamp(1.8rem, 3.5vw, 2.4rem)',
+                      fontWeight: 700,
+                      color: 'var(--champagne-light)',
+                      lineHeight: 1,
+                      marginBottom: '0.3rem',
+                    }}
+                  >
+                    {String(item.val).padStart(2, '0')}
+                  </div>
+                  <div
+                    style={{
+                      fontSize: '0.75rem',
+                      color: 'var(--muted-ivory)',
+                      textTransform: 'uppercase',
+                      letterSpacing: '0.05em',
+                    }}
+                  >
+                    {item.label}
+                  </div>
+                </div>
+              ))}
+            </div>
+
+            {countdownData.status === 'next_birthday' && (
+              <p
                 style={{
-                  background: 'rgba(255, 255, 255, 0.04)',
-                  border: '1px solid rgba(212, 175, 55, 0.25)',
-                  borderRadius: '1rem',
-                  padding: '1rem 0.5rem',
+                  fontSize: '0.85rem',
+                  color: 'var(--soft-blush)',
+                  marginTop: '1.2rem',
+                  fontStyle: 'italic',
                 }}
               >
-                <div
-                  style={{
-                    fontFamily: 'var(--font-serif-title)',
-                    fontSize: 'clamp(1.8rem, 3.5vw, 2.4rem)',
-                    fontWeight: 700,
-                    color: 'var(--champagne-light)',
-                    lineHeight: 1,
-                    marginBottom: '0.3rem',
-                  }}
-                >
-                  {String(item.val).padStart(2, '0')}
-                </div>
-                <div
-                  style={{
-                    fontSize: '0.75rem',
-                    color: 'var(--muted-ivory)',
-                    textTransform: 'uppercase',
-                    letterSpacing: '0.05em',
-                  }}
-                >
-                  {item.label}
-                </div>
-              </div>
-            ))}
+                Counting down to your {countdownData.targetAge}th birthday celebration on 17 October {countdownData.targetBirthdayYear}! ✨
+              </p>
+            )}
           </div>
         )}
       </div>
